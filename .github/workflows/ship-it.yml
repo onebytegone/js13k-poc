@@ -21,13 +21,8 @@ jobs:
          -
             run: npm ci
          -
-            run: npm run build
-         -
             shell: bash
-            run: (cd dist && zip -r ../output.zip .)
-         -
-            shell: bash
-            run: unzip -l output.zip
+            run: ./bin/package.sh
          -
             shell: bash
             run: echo ::set-env name=ZIPPED_BYTES::$(stat -c %s output.zip)
