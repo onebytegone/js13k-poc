@@ -57,6 +57,22 @@ jobs:
          -
             shell: bash
             run: unzip output.zip -d published
+            if: startsWith(github.ref, 'refs/tags/v')
+         -
+            shell: bash
+            run: echo ::set-env name=LATEST_TAG::$(git describe --tags $(git rev-list --tags="v[0-9.-]*" --max-count=1))
+            if: "!startsWith(github.ref, 'refs/tags/v')"
+         -
+            uses: onebytegone/fetch-gh-release-asset@master
+            with:
+               version: tags/${{ env.LATEST_TAG }}
+               file: output.zip
+               output_file: last-tagged.zip
+            if: "!startsWith(github.ref, 'refs/tags/v')"
+         -
+            shell: bash
+            run: unzip last-tagged.zip -d published
+            if: "!startsWith(github.ref, 'refs/tags/v')"
          -
             shell: bash
             run: unzip output.zip -d published/latest
