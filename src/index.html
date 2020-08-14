@@ -17,6 +17,12 @@
       <a-plane position="-20 2 0" rotation="0 90 0" width="40" height="4" color="#00ffff"></a-plane>
       <a-plane position="0 2 20" rotation="0 180 0" width="40" height="4" color="#ff0000"></a-plane>
       <a-plane position="20 2 0" rotation="0 270 0" width="40" height="4" color="#ff00ff"></a-plane>
+      <a-entity id="camera" camera="fov: 45" position="0 1.6 0" wasd-controls="acceleration: 65" touch-controls look-controls="pointerLockEnabled: true"></a-entity>
    </a-scene>
+   <script>
+      document.addEventListener('keypress', function(e) {
+         document.getElementById('camera').components['wasd-controls'].data.acceleration = e.shiftKey ? 220 : 65;
+      });
+   </script>
 </body>
 </html>
