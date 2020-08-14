@@ -23,10 +23,22 @@ module.exports = (grunt) => {
          },
       },
 
+      watch: {
+         scripts: {
+            files: ['src/**/*'],
+            tasks: [ 'build' ],
+            options: {
+               spawn: false,
+            },
+         },
+       },
+
    });
 
    grunt.loadNpmTasks('grunt-contrib-clean');
    grunt.loadNpmTasks('grunt-contrib-copy');
+   grunt.loadNpmTasks('grunt-contrib-watch');
 
    grunt.registerTask('build', [ 'clean:dist', 'copy:main' ]);
+   grunt.registerTask('develop', [ 'build', 'watch' ]);
 };
