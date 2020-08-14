@@ -7,8 +7,165 @@
    <meta name="apple-mobile-web-app-capable" content="yes">
    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
    <script src="https://aframe.io/releases/1.0.4/aframe.min.js"></script>
+   <style>
+      .on-screen-controls {
+         position: absolute;
+         left: 20px;
+         bottom: 20px;
+         display: flex;
+      }
+      .on-screen-controls button {
+         border: 0;
+         cursor: pointer;
+         min-width: 88px;
+         min-height: 44px;
+         border-radius: 8px;
+         margin-right: 10px;
+         user-select: none;
+         outline: 0;
+         border: 3px #555555 solid;
+         background-color: #eeeeee;
+         color: #555555;
+      }
+      .on-screen-controls button:active {
+         background-color: #555555;
+         color: #eeeeee;
+      }
+   </style>
 </head>
 <body>
+   <script>
+      AFRAME.registerComponent('touch-controls', {
+         schema: {
+            enabled: { default: true },
+            walkAcceleration: { default: 65 },
+            runAcceleration: { default: 220 },
+         },
+
+         init: function () {
+            this.easing = 1.1;
+            this.velocity = new THREE.Vector3();
+            this.inputs = {};
+
+            document.addEventListener('keypress', function(e) {
+               document.getElementById('camera').components['wasd-controls'].data.acceleration = e.shiftKey ? 220 : 65;
+            });
+
+            this.onInputDown = this.onInputDown.bind(this);
+            this.onInputUp = this.onInputUp.bind(this);
+         },
+
+         play: function () {
+            this.addEventListeners();
+         },
+
+         pause: function () {
+            this.removeEventListeners();
+         },
+
+         remove: function () {
+            this.pause();
+         },
+
+         addEventListeners: function () {
+            const elems = document.querySelectorAll('.on-screen-controls button');
+
+            elems.forEach((el) => {
+               el.addEventListener('mousedown', this.onInputDown); // TODO: Needed?
+               el.addEventListener('touchstart', this.onInputDown);
+               el.addEventListener('mouseup', this.onInputUp); // TODO: Needed?
+               el.addEventListener('touchend', this.onInputUp);
+               el.addEventListener('touchcancel', this.onInputUp);
+            });
+         },
+
+         removeEventListeners: function () {
+            const elems = document.querySelectorAll('.on-screen-controls button');
+
+            elems.forEach((el) => {
+               el.removeEventListener('mousedown', this.onInputDown); // TODO: Needed?
+               el.removeEventListener('touchstart', this.onInputDown);
+               el.removeEventListener('mouseup', this.onInputUp); // TODO: Needed?
+               el.removeEventListener('touchend', this.onInputUp);
+               el.removeEventListener('touchcancel', this.onInputUp);
+            });
+         },
+
+         onInputDown: function (event) {
+            this.inputs[event.target.dataset.input] = true;
+            event.preventDefault();
+         },
+
+         onInputUp: function (event) {
+            delete this.inputs[event.target.dataset.input];
+            event.preventDefault();
+         },
+
+         tick: function (time, delta) {
+            var data = this.data;
+            var velocity = this.velocity;
+
+            if (!data.enabled) { return; }
+
+            delta = delta / 1000;
+            this.updateVelocity(delta);
+
+            if (!velocity.z) {
+               return;
+            }
+
+            this.el.object3D.position.add(this.getMovementVector(delta));
+         },
+
+         updateVelocity: function (delta) {
+            var acceleration;
+            var data = this.data;
+            var velocity = this.velocity;
+
+            // If FPS too low, reset velocity.
+            if (delta > 0.2) {
+               velocity.z = 0;
+               return;
+            }
+
+            // https://gamedev.stackexchange.com/questions/151383/frame-rate-independant-movement-with-acceleration
+            var scaledEasing = Math.pow(1 / this.easing, delta * 60);
+
+            if (velocity.z !== 0) {
+               velocity.z -= velocity.z * scaledEasing;
+            }
+
+            if (Math.abs(velocity.z) < 0.00001) {
+               velocity.z = 0;
+            }
+
+            acceleration = this.inputs.run ? data.runAcceleration : data.walkAcceleration;
+
+            if (this.inputs.walk || this.inputs.run) {
+               velocity.z -= acceleration * delta;
+            }
+         },
+
+         getMovementVector: (function () {
+            var directionVector = new THREE.Vector3(0, 0, 0);
+            var rotationEuler = new THREE.Euler(0, 0, 0, 'YXZ');
+
+            return function (delta) {
+               const rotation = this.el.getAttribute('rotation'),
+                     velocity = this.velocity;
+
+               directionVector.copy(velocity);
+               directionVector.multiplyScalar(delta);
+
+               if (!rotation) { return directionVector; }
+
+               rotationEuler.set(0, THREE.Math.degToRad(rotation.y), 0);
+               directionVector.applyEuler(rotationEuler);
+               return directionVector;
+            };
+         })(),
+      });
+   </script>
    <a-scene stats background="color: #d9f5ff">
       <a-box position="-1 0.5 -3" rotation="0 45 0" color="#4CC3D9"></a-box>
       <a-cylinder position="1 0.75 -3" radius="0.5" height="1.5" color="#FFC65D"></a-cylinder>
@@ -19,6 +176,10 @@
       <a-plane position="20 2 0" rotation="0 270 0" width="40" height="4" color="#ff00ff"></a-plane>
       <a-entity id="camera" camera="fov: 45" position="0 1.6 0" wasd-controls="acceleration: 65" touch-controls look-controls="pointerLockEnabled: true"></a-entity>
    </a-scene>
+   <div class="on-screen-controls">
+      <button data-input="walk">Walk</button>
+      <button data-input="run">Run</button>
+   </div>
    <script>
       document.addEventListener('keypress', function(e) {
          document.getElementById('camera').components['wasd-controls'].data.acceleration = e.shiftKey ? 220 : 65;
