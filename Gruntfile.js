@@ -33,6 +33,14 @@ module.exports = (grunt) => {
          },
       },
 
+      terser: {
+         main: {
+            files: {
+              'dist/index.js': [ 'src/index.js' ],
+            },
+         },
+      },
+
       watch: {
          scripts: {
             files: ['src/**/*'],
@@ -49,8 +57,8 @@ module.exports = (grunt) => {
    grunt.loadNpmTasks('grunt-contrib-copy');
    grunt.loadNpmTasks('grunt-contrib-htmlmin');
    grunt.loadNpmTasks('grunt-contrib-watch');
+   grunt.loadNpmTasks('grunt-terser');
 
-
-   grunt.registerTask('build', [ 'clean:dist', 'htmlmin:main' ]);
+   grunt.registerTask('build', [ 'clean:dist', 'copy:main', 'terser:main', 'htmlmin:main' ]);
    grunt.registerTask('develop', [ 'build', 'watch' ]);
 };
