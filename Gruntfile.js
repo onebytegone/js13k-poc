@@ -17,9 +17,19 @@ module.exports = (grunt) => {
 
       copy: {
          main: {
-            files: [
-               { cwd: 'src', src: 'index.html', dest: config.out.dist, expand: true },
-            ],
+            files: [],
+         },
+      },
+
+      htmlmin: {
+         main: {
+            options: {
+               removeComments: true,
+               collapseWhitespace: true,
+            },
+            files: {
+               'dist/index.html': 'src/index.html',
+            },
          },
       },
 
@@ -37,8 +47,10 @@ module.exports = (grunt) => {
 
    grunt.loadNpmTasks('grunt-contrib-clean');
    grunt.loadNpmTasks('grunt-contrib-copy');
+   grunt.loadNpmTasks('grunt-contrib-htmlmin');
    grunt.loadNpmTasks('grunt-contrib-watch');
 
-   grunt.registerTask('build', [ 'clean:dist', 'copy:main' ]);
+
+   grunt.registerTask('build', [ 'clean:dist', 'htmlmin:main' ]);
    grunt.registerTask('develop', [ 'build', 'watch' ]);
 };
