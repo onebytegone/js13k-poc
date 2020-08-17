@@ -21,6 +21,14 @@ module.exports = (grunt) => {
          },
       },
 
+      cssmin: {
+         main: {
+            files: {
+               'dist/style.css': 'src/style.css',
+            },
+         },
+      },
+
       htmlmin: {
          main: {
             options: {
@@ -55,10 +63,11 @@ module.exports = (grunt) => {
 
    grunt.loadNpmTasks('grunt-contrib-clean');
    grunt.loadNpmTasks('grunt-contrib-copy');
+   grunt.loadNpmTasks('grunt-contrib-cssmin');
    grunt.loadNpmTasks('grunt-contrib-htmlmin');
    grunt.loadNpmTasks('grunt-contrib-watch');
    grunt.loadNpmTasks('grunt-terser');
 
-   grunt.registerTask('build', [ 'clean:dist', 'copy:main', 'terser:main', 'htmlmin:main' ]);
+   grunt.registerTask('build', [ 'clean:dist', 'copy:main', 'terser:main', 'htmlmin:main', 'cssmin:main' ]);
    grunt.registerTask('develop', [ 'build', 'watch' ]);
 };
