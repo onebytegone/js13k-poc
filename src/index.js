@@ -44,82 +44,56 @@ AFRAME.registerComponent('collider', {
 
 });
 
-AFRAME.registerComponent('touch-controls', {
+// Keyboard input
+// Based on: https://xem.github.io/articles/jsgamesinputs.html
+u=l=d=r=s=0;onkeydown=onkeyup=e=>{top['lld*rlurdu'[e.which%32%17]]=e.type[5]; s=e.shiftKey};
+
+// Touch input (buttons)
+document.onreadystatechange = function () {
+   if (document.readyState !== 'complete') {
+      return;
+   }
+
+   const handler = (v) => {
+      return (event) => {
+         event.target.dataset.inputs.split(',').forEach((input) => {
+            top[input] = v;
+         });
+         event.preventDefault();
+      };
+   };
+
+   document.querySelectorAll('.on-screen-controls button').forEach((e) => {
+      e.addEventListener('mousedown', handler(true));
+      e.addEventListener('touchstart', handler(true));
+      e.addEventListener('mouseup', handler());
+      e.addEventListener('touchend', handler());
+      e.addEventListener('touchcancel', handler());
+   });
+};
+
+// Touch input (on-screen, for VR)
+// TODO: Impl
+
+AFRAME.registerComponent('movement', {
    schema: {
-      enabled: { default: true },
-      walkAcceleration: { default: 65 },
-      runAcceleration: { default: 220 },
+      walk: { default: 65 },
+      run: { default: 220 },
    },
 
    init: function () {
+      this.camera = this.el; // TODO: make configurable
       this.easing = 1.1;
       this.velocity = new THREE.Vector3();
-      this.inputs = {};
-
-      document.addEventListener('keypress', function(e) {
-         document.getElementById('camera').components['wasd-controls'].data.acceleration = e.shiftKey ? 220 : 65;
-      });
-
-      this.onInputDown = this.onInputDown.bind(this);
-      this.onInputUp = this.onInputUp.bind(this);
-   },
-
-   play: function () {
-      this.addEventListeners();
-   },
-
-   pause: function () {
-      this.removeEventListeners();
-   },
-
-   remove: function () {
-      this.pause();
-   },
-
-   addEventListeners: function () {
-      const elems = document.querySelectorAll('.on-screen-controls button');
-
-      elems.forEach((el) => {
-         el.addEventListener('mousedown', this.onInputDown); // TODO: Needed?
-         el.addEventListener('touchstart', this.onInputDown);
-         el.addEventListener('mouseup', this.onInputUp); // TODO: Needed?
-         el.addEventListener('touchend', this.onInputUp);
-         el.addEventListener('touchcancel', this.onInputUp);
-      });
-   },
-
-   removeEventListeners: function () {
-      const elems = document.querySelectorAll('.on-screen-controls button');
-
-      elems.forEach((el) => {
-         el.removeEventListener('mousedown', this.onInputDown); // TODO: Needed?
-         el.removeEventListener('touchstart', this.onInputDown);
-         el.removeEventListener('mouseup', this.onInputUp); // TODO: Needed?
-         el.removeEventListener('touchend', this.onInputUp);
-         el.removeEventListener('touchcancel', this.onInputUp);
-      });
-   },
-
-   onInputDown: function (event) {
-      this.inputs[event.target.dataset.input] = true;
-      event.preventDefault();
-   },
-
-   onInputUp: function (event) {
-      delete this.inputs[event.target.dataset.input];
-      event.preventDefault();
    },
 
    tick: function (time, delta) {
-      var data = this.data;
-      var velocity = this.velocity;
-
-      if (!data.enabled) { return; }
+      const velocity = this.velocity;
 
       delta = delta / 1000;
       this.updateVelocity(delta);
 
-      if (!velocity.z) {
+      if (!velocity.x && !velocity.z) {
          return;
       }
 
@@ -127,40 +101,51 @@ AFRAME.registerComponent('touch-controls', {
    },
 
    updateVelocity: function (delta) {
-      var acceleration;
-      var data = this.data;
-      var velocity = this.velocity;
+      const velocity = this.velocity;
 
       // If FPS too low, reset velocity.
       if (delta > 0.2) {
+         velocity.x = 0;
          velocity.z = 0;
          return;
       }
 
       // https://gamedev.stackexchange.com/questions/151383/frame-rate-independant-movement-with-acceleration
-      var scaledEasing = Math.pow(1 / this.easing, delta * 60);
+      const scaledEasing = Math.pow(1 / this.easing, delta * 60);
+
+      if (velocity.x !== 0) {
+         velocity.x -= velocity.x * scaledEasing;
+      }
 
       if (velocity.z !== 0) {
          velocity.z -= velocity.z * scaledEasing;
       }
 
+      if (Math.abs(velocity.x) < 0.00001) {
+         velocity.x = 0;
+      }
       if (Math.abs(velocity.z) < 0.00001) {
          velocity.z = 0;
       }
 
-      acceleration = this.inputs.run ? data.runAcceleration : data.walkAcceleration;
+      const acceleration = s ? this.data.run : this.data.walk;
 
-      if (this.inputs.walk || this.inputs.run) {
-         velocity.z -= acceleration * delta;
+      if (u || d) {
+         velocity.z += acceleration * delta * (u ? -1 : 1);
+      }
+
+      if (l || r) {
+         velocity.x += acceleration * delta* (l ? -1 : 1);
       }
    },
 
    getMovementVector: (function () {
+      // TODO: stop creating these each tick?
       var directionVector = new THREE.Vector3(0, 0, 0);
       var rotationEuler = new THREE.Euler(0, 0, 0, 'YXZ');
 
       return function (delta) {
-         const rotation = this.el.getAttribute('rotation'),
+         const rotation = this.camera.getAttribute('rotation'),
                velocity = this.velocity;
 
          directionVector.copy(velocity);
@@ -173,10 +158,7 @@ AFRAME.registerComponent('touch-controls', {
          return directionVector;
       };
    })(),
-});
 
-document.addEventListener('keypress', function(e) {
-   document.getElementById('camera').components['wasd-controls'].data.acceleration = e.shiftKey ? 220 : 65;
 });
 
 function makeWallEl(width) {
