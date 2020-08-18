@@ -1,3 +1,49 @@
+let collidableObjects = [];
+
+AFRAME.registerComponent('collidable', {
+   init: function () {
+      this.bounds = new THREE.Box3();
+      collidableObjects.push(this);
+   },
+
+   update: function() {
+      this.bounds.setFromObject(this.el.object3D);
+   },
+
+});
+
+AFRAME.registerComponent('collider', {
+
+   schema: {
+      radius: { default: 1 },
+   },
+
+   init: function () {
+      this.lastPosition = this.el.object3D.position.clone();
+   },
+
+   tick: function () {
+      const position = this.el.object3D.position,
+            radius = this.data.radius;
+
+      const collidingObj = collidableObjects.find((obj) => {
+         return obj.bounds
+            && (position.x + radius) > obj.bounds.min.x
+            && (position.x - radius) < obj.bounds.max.x
+            && (position.z + radius) > obj.bounds.min.z
+            && (position.z - radius) < obj.bounds.max.z;
+      });
+
+      // TODO: impl wall sliding and stop the jitter when colliding with a wall
+      if (collidingObj) {
+         position.copy(this.lastPosition);
+      } else {
+         this.lastPosition.copy(position);
+      }
+   },
+
+});
+
 AFRAME.registerComponent('touch-controls', {
    schema: {
       enabled: { default: true },
@@ -140,6 +186,7 @@ function makeWallEl(width) {
    el.setAttribute('height', '4');
    el.setAttribute('depth', '0.25');
    el.setAttribute('color', '#ededea');
+   el.setAttribute('collidable', '');
    return el;
 }
 
