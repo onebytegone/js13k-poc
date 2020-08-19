@@ -12,6 +12,9 @@
 </head>
 <body>
    <a-scene stats background="color: #d9f5ff">
+      <a-assets>
+        <canvas id="floor" width="128" height="128" crossorigin="anonymous"></canvas>
+      </a-assets>
       <a-entity id="camera" collider camera="fov: 45; far: 50" position="0 1.6 0" movement look-controls="pointerLockEnabled: true"></a-entity>
    </a-scene>
    <div class="on-screen-controls">

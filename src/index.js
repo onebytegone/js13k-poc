@@ -225,8 +225,8 @@ function createFloor(mapW, mapH) {
    el.setAttribute('position', `${w / 2 - 4} 0 ${h / 2 - 4}`);
    el.setAttribute('width', w);
    el.setAttribute('height', h);
-   el.setAttribute('color', '#efa0e0');
    el.setAttribute('rotation', '-90 0 0');
+   el.setAttribute('material', `src: #floor; repeat: ${w * 1.6}, ${h * 1.6}`);
 
    sceneEl.appendChild(el);
 }
@@ -276,11 +276,52 @@ function renderMap(map) {
    });
 }
 
+function drawFloorTexture() {
+   const floorCanvas = document.getElementById('floor'),
+         floorCanvasCtx = floorCanvas.getContext('2d'),
+         canvasWidth = floorCanvas.width,
+         canvasHeight = floorCanvas.height;
+
+   floorCanvasCtx.fillStyle = '#eee';
+   floorCanvasCtx.fillRect(0, 0, canvasWidth, canvasHeight);
+
+   floorCanvasCtx.strokeStyle = '#333';
+   floorCanvasCtx.lineWidth = 1;
+
+   drawPolygon(floorCanvasCtx, 0, 0, canvasWidth / 2, 6);
+   floorCanvasCtx.stroke();
+   drawPolygon(floorCanvasCtx, canvasWidth, canvasHeight, canvasWidth / 2, 6);
+   floorCanvasCtx.stroke();
+
+   floorCanvasCtx.strokeStyle = '#aaa';
+   floorCanvasCtx.strokeRect(0, 0, canvasWidth, canvasHeight);
+}
+
+function drawPolygon(ctx, x, y, radius, sides) {
+   if (sides < 3) {
+      return;
+   }
+
+   const angle = (Math.PI * 2) / sides;
+
+   ctx.beginPath();
+   ctx.translate(x, y);
+   ctx.moveTo(radius, 0);
+   for (let i = 1; i < sides; i++) {
+      ctx.lineTo(radius * Math.cos(angle * i), radius * Math.sin(angle * i));
+   }
+   ctx.closePath();
+   ctx.translate(-x, -y);
+ }
+
+
 window.onload = () => {
    const seed = Math.floor(Math.random() * 100),
          prng = PRNG(seed),
          map = generateMap(prng, 10, 10);
 
    console.log(seed);
+
+   drawFloorTexture();
    renderMap(map);
 }
