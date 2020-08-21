@@ -43,6 +43,14 @@ module.exports = (grunt) => {
 
       terser: {
          main: {
+            options: {
+               toplevel: true,
+               compress: {
+                  passes: 5,
+                  unsafe: true,
+                  pure_getters: true,
+               },
+            },
             files: {
               'dist/index.js': [ 'src/index.js' ],
             },
