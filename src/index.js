@@ -12,37 +12,180 @@ AFRAME.registerComponent('collidable', {
 
 });
 
-AFRAME.registerComponent('collider', {
+function calculateCollision(current, future, aabb) {
+   if (current.x === future.x && current.y === future.y) {
+     return;
+   }
 
-   schema: {
-      radius: { default: 1 },
-   },
+   const radius = current.radius,
+         currentN = current.y - radius,
+         currentE = current.x + radius,
+         currentS = current.y + radius,
+         currentW = current.x - radius,
+         futureN = future.y - radius,
+         futureE = future.x + radius,
+         futureS = future.y + radius,
+         futureW = future.x - radius,
+         aabbN = aabb.n,
+         aabbE = aabb.e,
+         aabbS = aabb.s,
+         aabbW = aabb.w;
 
-   init: function () {
-      this.lastPosition = this.el.object3D.position.clone();
-   },
 
-   tick: function () {
-      const position = this.el.object3D.position,
-            radius = this.data.radius;
+   const isNearAABB = Math.max(currentE, futureE) > aabbW
+     && Math.min(currentW, futureW) < aabbE
+     && Math.max(currentS, futureS) > aabbN
+     && Math.min(currentN, futureN) < aabbS;
 
-      const collidingObj = collidableObjects.find((obj) => {
-         return obj.bounds
-            && (position.x + radius) > obj.bounds.min.x
-            && (position.x - radius) < obj.bounds.max.x
-            && (position.z + radius) > obj.bounds.min.z
-            && (position.z - radius) < obj.bounds.max.z;
-      });
+   if (!isNearAABB) {
+     return;
+   }
 
-      // TODO: impl wall sliding and stop the jitter when colliding with a wall
-      if (collidingObj) {
-         position.copy(this.lastPosition);
-      } else {
-         this.lastPosition.copy(position);
-      }
-   },
+   const dx = future.x - current.x,
+         dy = future.y - current.y,
+         invdx = (dx === 0 ? 0 : 1 / dx),
+         invdy = (dy === 0 ? 0 : 1 / dy);
 
-});
+   let cornerX, cornerY;
+
+   if (currentW < aabbW && futureE > aabbW) {
+     const timeToCollision = (aabbW - currentE) * invdx;
+
+     if (timeToCollision >= 0 && timeToCollision <= 1) {
+       const yAtCollision = current.y + dy * timeToCollision;
+
+       if (yAtCollision >= aabbN && yAtCollision <= aabbS) {
+         return {
+           t: timeToCollision,
+           x: current.x + dx * timeToCollision,
+           y: yAtCollision,
+           nx: -1,
+           ny: 0,
+         };
+       }
+     }
+     cornerX = aabbW;
+   }
+
+   if (currentE > aabbE && futureW < aabbE) {
+     const timeToCollision = (aabbE - currentW) * invdx;
+
+     if (timeToCollision >= 0 && timeToCollision <= 1) {
+       const yAtCollision = current.y + dy * timeToCollision;
+
+       if (yAtCollision >= aabbN && yAtCollision <= aabbS) {
+         return {
+           t: timeToCollision,
+           x: current.x + dx * timeToCollision,
+           y: yAtCollision,
+           nx: 1,
+           ny: 0,
+         };
+       }
+     }
+     cornerX = aabbE;
+   }
+
+   if (currentN < aabbN && futureS > aabbN) {
+     const timeToCollision = (aabbN - currentS) * invdy;
+
+     if (timeToCollision >= 0 && timeToCollision <= 1) {
+       const xAtCollision = current.x + dx * timeToCollision;
+
+       if (xAtCollision >= aabbW && xAtCollision <= aabbE) {
+         isColliding = true;
+         return {
+           t: timeToCollision,
+           x: xAtCollision,
+           y: current.y + dy * timeToCollision,
+           nx: 0,
+           ny: -1,
+         };
+       }
+     }
+     cornerY = aabbN;
+   }
+
+   if (currentS > aabbS && futureN < aabbS) {
+     const timeToCollision = (aabbS - currentN) * invdy;
+
+     if (timeToCollision >= 0 && timeToCollision <= 1) {
+       const xAtCollision = current.x + dx * timeToCollision;
+
+       if (xAtCollision >= aabbW && xAtCollision <= aabbE) {
+         return {
+           t: timeToCollision,
+           x: xAtCollision,
+           y: current.y + dy * timeToCollision,
+           nx: 0,
+           ny: 1,
+         };
+       }
+     }
+     cornerY = aabbS;
+   }
+
+   if (cornerX === undefined && cornerY === undefined){
+     return;
+   }
+
+   if (cornerX !== undefined && cornerY === undefined) {
+     cornerY = (dy > 0 ? aabbS : aabbN);
+   } else if (cornerY !== undefined && cornerX === undefined) {
+     cornerX = (dx > 0 ? aabbE : aabbW);
+   }
+
+   const inverseRadius = 1 / radius,
+         lineLength = Math.sqrt(dx * dx + dy * dy),
+         cornerdx = cornerX - current.x,
+         cornerdy = cornerY - current.y,
+         cornerDistance = Math.sqrt(cornerdx * cornerdx + cornerdy * cornerdy);
+         innerAngle = Math.acos((cornerdx * dx + cornerdy * dy) / (lineLength * cornerDistance));
+
+   if (cornerDistance < radius) {
+     return;
+   }
+
+   if (innerAngle === 0) {
+     const timeToCollision = (cornerDistance - radius) / lineLength;
+
+     if (timeToCollision > 1 || timeToCollision < 0){
+       return;
+     }
+
+     return {
+       t: timeToCollision,
+       x: current.x + dx * timeToCollision,
+       y: current.y + dy * timeToCollision,
+       nx: cornerdx / cornerDistance,
+       ny: cornerdy / cornerDistance,
+     };
+   }
+
+   const innerAngleSin = Math.sin(innerAngle),
+         angle1Sin = innerAngleSin * cornerDistance * inverseRadius;
+
+   if (Math.abs(angle1Sin) > 1) {
+     return;
+   }
+
+   const angle1 = Math.PI - Math.asin(angle1Sin),
+         angle2 = Math.PI - innerAngle - angle1,
+         intersectionDistance = radius * Math.sin(angle2) / innerAngleSin,
+         timeToCollision = intersectionDistance / lineLength;
+
+   if (timeToCollision > 1 || timeToCollision < 0) {
+     return;
+   }
+
+   return {
+     t: timeToCollision,
+     x: current.x + dx * timeToCollision,
+     y: current.y + dy * timeToCollision,
+     nx: (timeToCollision * dx + current.x - cornerX) * inverseRadius,
+     ny: (timeToCollision * dy + current.y - cornerY) * inverseRadius,
+   };
+}
 
 // Keyboard input
 // Based on: https://xem.github.io/articles/jsgamesinputs.html
@@ -79,10 +222,12 @@ AFRAME.registerComponent('movement', {
    schema: {
       walk: { default: 65 },
       run: { default: 220 },
+      radius: { default: 1 },
+      camera: { default: '' },
    },
 
    init: function () {
-      this.camera = this.el; // TODO: make configurable
+      this.camera = this.data.camera ? document.getElementById(this.data.camera) : this.el;
       this.easing = 1.1;
       this.velocity = new THREE.Vector3();
    },
@@ -97,7 +242,51 @@ AFRAME.registerComponent('movement', {
          return;
       }
 
-      this.el.object3D.position.add(this.getMovementVector(delta));
+      // TODO: stop creating these each tick?
+      const current = {
+         x: this.el.object3D.position.x * 100,
+         y: this.el.object3D.position.z * 100,
+         radius: this.data.radius * 100,
+      };
+
+      const newPosition = new THREE.Vector3(0, 0, 0);
+
+      newPosition.copy(this.el.object3D.position).add(this.getMovementVector(delta));
+
+      const future = {
+         x: newPosition.x * 100,
+         y: newPosition.z * 100,
+      };
+
+      collidableObjects.forEach((obj) => {
+         if (!obj.bounds) {
+            return;
+         }
+
+         collision = calculateCollision(current, future, {
+            n: obj.bounds.min.z * 100,
+            s: obj.bounds.max.z * 100,
+            e: obj.bounds.max.x * 100,
+            w: obj.bounds.min.x * 100,
+         });
+
+         if (collision) {
+            const remainingTime = 1 - collision.t,
+                  dx = future.x - current.x,
+                  dy = future.y - current.y,
+                  dot = dx * collision.nx + dy * collision.ny,
+                  ndx = dx - 2 * dot * collision.nx,
+                  ndy = dy - 2 * dot * collision.ny;
+
+            future.x = collision.x + ndx * remainingTime,
+            future.y = collision.y + ndy * remainingTime;
+         }
+      });
+
+      newPosition.x = future.x / 100;
+      newPosition.z = future.y / 100;
+
+      this.el.object3D.position.copy(newPosition);
    },
 
    updateVelocity: function (delta) {
@@ -135,7 +324,7 @@ AFRAME.registerComponent('movement', {
       }
 
       if (l || r) {
-         velocity.x += acceleration * delta* (l ? -1 : 1);
+         velocity.x += acceleration * delta * (l ? -1 : 1);
       }
    },
 

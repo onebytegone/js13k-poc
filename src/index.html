@@ -15,7 +15,11 @@
       <a-assets>
         <canvas id="floor" width="128" height="128" crossorigin="anonymous"></canvas>
       </a-assets>
-      <a-entity id="camera" collider camera="fov: 45; far: 50" position="0 1.6 0" movement look-controls="pointerLockEnabled: true"></a-entity>
+      <a-entity id="rig" movement="camera: camera" position="1.25 0 3">
+         <a-circle radius="1" rotation="-90 0 0" position="0 0.1 0" color="#00f"></a-circle>
+         <a-camera id="camera" position="0 1.6 0" camera="fov: 45; far: 50;"  wasd-controls-enabled="false" look-controls="pointerLockEnabled: true"></a-camera>
+       </a-entity>
+       <a-box collidable width="2.5" height="0.5" depth="0.5" color="#0ff" position="1.25 0.25 1.5"></a-box>
    </a-scene>
    <div class="on-screen-controls">
       <button data-inputs="u">Walk</button>
